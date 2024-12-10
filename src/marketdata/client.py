@@ -28,7 +28,6 @@ class MarketDataClient:
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {self.api_key}'
         }
-        self.cache_list = {}
         self.api_calls = 0
     
     def handle_response(self, response, output):
@@ -49,122 +48,6 @@ class MarketDataClient:
         except ValueError:
             return response.text, response.status_code
     
-    def check_cache(self, sub_dir, **kwargs):
-        
-        if sub_dir == None or sub_dir == "":
-            raise ValueError("sub_dir must be specified")
-        
-        key = self.construct_cache_key(**kwargs)
-        df, status_code = self.load_from_cache(key, sub_dir)
-        return df, status_code, key
-        
-    
-    def construct_cache_key(self, **kwargs):
-        # Sort the kwargs by key to ensure consistent ordering
-        sorted_kwargs = sorted(kwargs.items(), key=lambda x: x[0])
-        
-        def serialize_object(obj):
-            if isinstance(obj, (datetime.date, datetime.datetime)):
-                return obj.isoformat()
-            elif isinstance(obj, np.ndarray):
-                return obj.tolist()
-            elif isinstance(obj, (np.int_, np.intc, np.intp, np.int8, np.int16, np.int32, np.int64, 
-                                np.uint8, np.uint16, np.uint32, np.uint64)):
-                return int(obj)
-            elif isinstance(obj, (np.float_, np.float16, np.float32, np.float64)):
-                return float(obj)
-            elif isinstance(obj, np.bool_):
-                return bool(obj)
-            elif hasattr(obj, '__dict__'):
-                return {key: serialize_object(value) for key, value in obj.__dict__.items()}
-            else:
-                return str(obj)
-        
-        # Sort the kwargs by key to ensure consistent ordering
-        sorted_kwargs = sorted(kwargs.items(), key=lambda x: x[0])
-        
-        # Serialize each value in the sorted kwargs
-        serialized_kwargs = [(k, serialize_object(v)) for k, v in sorted_kwargs]
-        
-        # Convert the serialized kwargs into a JSON string
-        try:
-            kwargs_json = json.dumps(serialized_kwargs)
-        except TypeError as e:
-            # If JSON serialization fails, use string representation as fallback
-            kwargs_json = str(serialized_kwargs)
-        
-        # Create a hash of the JSON string
-        hash_object = hashlib.md5(kwargs_json.encode())
-        cache_key = hash_object.hexdigest()
-        
-        return cache_key
-    
-    def load_from_cache(self, cache_key, sub_dir):
-        
-        if sub_dir == None or sub_dir == "":
-            raise ValueError("sub_dir must be specified")
-        
-        cache_path = os.path.join('./data/cache', sub_dir)
-        
-        start_time = time()
-        if not os.path.exists(cache_path):
-            os.makedirs(cache_path)
-            
-        if cache_key in self.cache_list:
-            # logger.debug(f"Found data in cache dictionary: {cache_key}")
-            data = pd.read_parquet(self.cache_list[cache_key])
-            if not data.empty:
-                status_code = 250
-                # logger.info(f"Loaded data from cache: {cache_key} in {time() - start_time:.2f} seconds")
-                return data, status_code
-
-        if not cache_key in self.cache_list:
-            # Check if the cache file exists in the cache directory
-            key_path = f'{cache_path}/{cache_key}.parquet'
-            if os.path.exists(key_path):
-                self.cache_list[cache_key] = key_path
-                logger.debug(f"Found data in cache file list: {cache_key}")
-                
-                try:
-                    # Read the file from the cache
-                    data = pd.read_parquet(key_path)
-                    if not data.empty:
-                        status_code = 250
-                    else:
-                        status_code = 402
-                except Exception as e:
-                    logger.debug(f"Error reading cache file: {e}, returning as JSON")
-                    with open(f'{cache_path}/{cache_key}.json', 'r') as f:
-                        data = json.load(f)
-                        if data.get('s') == 'no_data':
-                            status_code = 402
-                        elif data.get('s') == 'error':
-                            status_code = 500
-                        else:
-                            status_code = 250                
-  
-                # logger.info(f"Loaded data from cache: {cache_key} in {time() - start_time:.2f} seconds")
-                return data, status_code
-            
-        return pd.DataFrame(), 402
-    
-    def save_to_cache(self, data, cache_key, sub_dir):
-        
-        if sub_dir == None or sub_dir == "":
-            raise ValueError("sub_dir must be specified")
-        
-        cache_path = os.path.join('./data/cache', sub_dir)
-        
-        if not os.path.exists(cache_path):
-            os.makedirs(cache_path)
-        
-        if isinstance(data, pd.DataFrame):
-            data.to_parquet(f'{cache_path}/{cache_key}.parquet')
-        else:
-            with open(f'{cache_path}/{cache_key}.json', 'w') as f:
-                json.dump(data, f)
-        # logger.debug(f"Saved data to cache: {cache_key}")
-        
     # /v1/funds/candles/{resolution}/{symbol}/
     def get_fund_candles(
         self,
@@ -272,7 +155,7 @@ class MarketDataClient:
         return self.handle_response(response, output)
         
     # /v1/options/chain/{underlying}/
-    def get_options_chain(self, params: OptionsChainParams, use_cache: bool = True):
+    def get_options_chain(self, params: OptionsChainParams):
         """Get options chain for a symbol.
 
         Args:
@@ -281,22 +164,6 @@ class MarketDataClient:
         Returns:
             dict, str: Returns the raw data as a dictionary or an error message.
         """
-
-        if use_cache:
-            cached_data, status_code, cache_key = self.check_cache(
-                sub_dir="options_chain",
-                method_name="get_options_chain",
-                **params.to_dict()
-            )
-        else:
-            cached_data = pd.DataFrame()
-            status_code = 402
-            cache_key = None
-            
-        if not cached_data.empty:
-            logger.debug(f"Returning cached data for {cache_key}")
-            return cached_data, status_code
-
         url = BASE_URL + f'options/chain/{params.underlying}/'
         request_params = params.to_dict()
 
@@ -316,11 +183,7 @@ class MarketDataClient:
         url = f"{url}?{urlencode(request_params)}"
         response = requests.get(url, headers=self.headers)
         self.api_calls += 1
-        data, status_code = self.handle_response(response, params.output)
-        
-        # Save the data to the cache
-        self.save_to_cache(data, cache_key, "options_chain")
-        return data, status_code
+        return self.handle_response(response, params.output)
 
     # /v1/options/expirations/{underlying}/
     def get_options_expirations(
@@ -356,29 +219,8 @@ class MarketDataClient:
         basic_params: BasicParams | None = None,
         from_to_params: FromToParams | None = None,
         columns: str = None,
-        output = "dataframe",
-        use_cache: bool = True
+        output = "dataframe"
     ):
-        
-        if use_cache:
-            cached_data, status_code, cache_key = self.check_cache(
-                sub_dir="options_quotes",
-                method_name="get_options_quotes",
-                option_symbol=option_symbol,
-                basic_params=basic_params,
-                from_to_params=from_to_params,
-                columns=columns,
-                output=output
-            )
-        else:
-            cached_data = pd.DataFrame()
-            status_code = 402
-            cache_key = None
-        
-        if not cached_data.empty:
-            logger.debug(f"Returning cached data for {cache_key}")
-            return cached_data, status_code
-
         url = BASE_URL + f'options/quotes/{option_symbol}/'
         params = {}
         if basic_params:
@@ -390,11 +232,7 @@ class MarketDataClient:
 
         response = requests.get(url, headers=self.headers, params=params)
         self.api_calls += 1
-        data, status_code = self.handle_response(response, output)
-        if isinstance(data, pd.DataFrame):
-            # Save the data to the cache
-            self.save_to_cache(data, cache_key, "options_quotes")
-        return data, status_code
+        return self.handle_response(response, output)
         
 
     # /v1/options/strikes/{underlying}/

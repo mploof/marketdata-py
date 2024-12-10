@@ -24,13 +24,6 @@ from marketdata.client_params import OptionsChainParams, OptionsQuoteParams
 
 BASE_URL = 'https://api.marketdata.app/v1/'
 
-data_cache = {}
-key_cache = {}
-chains_key_cache = {}
-quotes_key_cache = {}
-chains_path = './data/cache/options_chain'
-quotes_path = './data/cache/options_quotes'
-
 class MarketDataAsyncClient:
     
     def __init__(self) -> None:

@@ -111,7 +111,6 @@ class OptionsChainParams:
     columns: Optional[str] = None
     output: str = "dataframe"
     id: str = str(uuid4())
-    use_cache: bool = False
 
     def to_dict(self):
         def serialize(v):
@@ -124,7 +123,6 @@ class OptionsChainParams:
 
         out = {k: serialize(v) for k, v in asdict(self).items() if v is not None}
         del out['id']
-        del out['use_cache']
         return out
 
     def make_copy(self, **kwargs) -> 'OptionsChainParams':
@@ -149,11 +147,9 @@ class OptionsQuoteParams:
     from_to_params: Optional[FromToParams] = None
     columns: Optional[str] = None
     output: str = "dataframe"
-    use_cache: bool = False
 
     def to_dict(self):
         out = {k: v for k, v in asdict(self).items() if v is not None}
-        del out['use_cache']
         return out
 
     def make_copy(self, **kwargs) -> 'OptionsQuoteParams':
