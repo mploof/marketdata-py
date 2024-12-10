@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "marketdata-py"
-version = "0.0.2"
+version = "0.0.3"
 description = "A Python client for the marketdata.app API"
 authors = [
     { name = "Michael Ploof", email = "michael@tinkertech.io" },
