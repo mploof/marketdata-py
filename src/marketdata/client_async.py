@@ -33,7 +33,6 @@ class MarketDataAsyncClient:
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {self.api_key}'
         }
-        self.api_calls = 0
 
     async def handle_response_async(self, response, output):
         try:
@@ -99,7 +98,6 @@ class MarketDataAsyncClient:
             async with session.get(url, headers=self.headers) as response:
                 url_with_token = url + '&token=' + self.api_key
                 # logger.debug(f"API call (Option Chain): {url_with_token}")
-                self.api_calls += 1
                 data, status_code = await self.handle_response_async(response, params.output)
                 if not 200 <= status_code < 300:
                     # logger.error(f"Error fetching options chain for {params.underlying}. Status code: {status_code}")
@@ -133,7 +131,6 @@ class MarketDataAsyncClient:
             url_with_params = url + '?' + '&'.join([f'{k}={v}' for k, v in api_params.items()])
             # logger.debug(f"API call (Options Quotes): {url_with_params}")
             async with session.get(url, headers=self.headers, params=api_params) as response:
-                self.api_calls += 1
                 data, status_code = await self.handle_response_async(response, params.output)
                 if not 200 <= status_code < 300:
                     logger.error(f"Error fetching options quotes for {params.option_symbol}. Status code: {status_code}")
@@ -190,8 +187,10 @@ class MarketDataAsyncClient:
                 # Construct full url with params for logging
                 url_with_token = url + '&' + self.api_key
                 logger.debug(f"API call (Candles): {url_with_token}")
-                self.api_calls += 1
-                return await self.handle_response_async(response, output)
+                data, status_code = await self.handle_response_async(response, output)
+                if not 200 <= status_code < 300:
+                    logger.error(f"Error fetching candles for {symbol}. Status code: {status_code}")
+                return data
             
     def get_stock_candles_parallel(self, symbols: List[str], resolution: str, from_date: datetime.date, to_date: datetime.date, max_concurrent: int = 50) -> Dict[str, pd.DataFrame | None]:
             async def fetch_stock(session, semaphore, symbol) -> Tuple[str, Any, int]:

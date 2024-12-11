@@ -28,7 +28,6 @@ class MarketDataClient:
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {self.api_key}'
         }
-        self.api_calls = 0
     
     def handle_response(self, response, output):
         try:
@@ -69,7 +68,6 @@ class MarketDataClient:
             params['columns'] = columns
         
         response = requests.get(url, headers=self.headers, params=params)
-        self.api_calls += 1
         return self.handle_response(response, output)
 
     # /v1/indices/candles/{resolution}/{symbol}/
@@ -93,7 +91,6 @@ class MarketDataClient:
             params['columns'] = columns
         
         response = requests.get(url, headers=self.headers, params=params)
-        self.api_calls += 1
         return self.handle_response(response, output)
 
     # /v1/indicies/quotes/{symbol}/
@@ -118,7 +115,6 @@ class MarketDataClient:
             logger.warning("The lookup_date parameter is not supported for this endpoint. It will be ignored.")
         
         response = requests.get(url, headers=self.headers, params=params)
-        self.api_calls += 1
         return self.handle_response(response, output)
             
     # /v1/markets/status/
@@ -151,7 +147,6 @@ class MarketDataClient:
         params['country'] = country
         
         response = requests.get(url, headers=self.headers, params=params)
-        self.api_calls += 1
         return self.handle_response(response, output)
         
     # /v1/options/chain/{underlying}/
@@ -182,7 +177,6 @@ class MarketDataClient:
         logger.warning(f"Debug - Full URL: {url}?{urlencode(request_params)}")
         url = f"{url}?{urlencode(request_params)}"
         response = requests.get(url, headers=self.headers)
-        self.api_calls += 1
         return self.handle_response(response, params.output)
 
     # /v1/options/expirations/{underlying}/
@@ -204,7 +198,6 @@ class MarketDataClient:
             params['columns'] = columns
         
         response = requests.get(url, headers=self.headers, params=params)
-        self.api_calls += 1
         return self.handle_response(response, output)
     
 
@@ -231,7 +224,6 @@ class MarketDataClient:
             params['columns'] = columns
 
         response = requests.get(url, headers=self.headers, params=params)
-        self.api_calls += 1
         return self.handle_response(response, output)
         
 
@@ -268,7 +260,6 @@ class MarketDataClient:
             params['columns'] = columns
             
         response = requests.get(url, headers=self.headers, params=params)
-        self.api_calls += 1
         return self.handle_response(response, output)
     
 
@@ -308,7 +299,6 @@ class MarketDataClient:
         params['snapshot'] = snapshot
         
         response = requests.get(url, headers=self.headers, params=params)
-        self.api_calls += 1
         return self.handle_response(response, output)
 
     # /v1/stocks/bulkquotes/
@@ -333,8 +323,6 @@ class MarketDataClient:
             logger.warning("The lookup_date parameter is not supported for this endpoint. It will be ignored.")
         
         response = requests.get(url, headers=self.headers, params=params)
-        # TODO: Verify that this is actually counted as a single API call
-        self.api_calls += 1
         return self.handle_response(response, output)
 
     # /v1/stocks/candles/{resolution}/{symbol}/
@@ -392,7 +380,6 @@ class MarketDataClient:
                 params[key] = value
 
         response = requests.get(url, headers=self.headers, params=params)
-        self.api_calls += 1
         return self.handle_response(response, output)
     
     # /v1/stocks/earnings/{symbol}/
@@ -419,7 +406,6 @@ class MarketDataClient:
         params.update({k: v for k, v in optional_params.items() if v is not None})
         
         response = requests.get(url, headers=self.headers, params=params)
-        self.api_calls += 1
         return self.handle_response(response, output)
 
     # /v1/stocks/news/{symbol}/
@@ -439,7 +425,6 @@ class MarketDataClient:
             params.update(from_to_params.params)
         
         response = requests.get(url, headers=self.headers, params=params)
-        self.api_calls += 1
         return self.handle_response(response, output)
 
     # /v1/stocks/quotes/{symbol}/
@@ -464,6 +449,5 @@ class MarketDataClient:
             del basic_params['lookup_date']
         
         response = requests.get(url, headers=self.headers, params=params)
-        self.api_calls += 1
         return self.handle_response(response, output)
     
