@@ -91,7 +91,3 @@ candles = mdm.get_stock_candles(
 ```
 
 `BasicParams` includes common options like date format and result limits, while `FromToParams` specifies date ranges for historical data queries.
-
-### Caching
-
-The module implements caching to reduce API calls and improve performance. Cached data is stored in the `./data/cache` directory.
