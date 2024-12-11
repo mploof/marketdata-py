@@ -27,4 +27,4 @@ jobs:
           TWINE_REPOSITORY: ${{ github.event_name == 'release' && 'pypi' || 'testpypi' }}
         run: |
           python -m build
-          python -m twine upload dist/*
+          python -m twine upload --verbose dist/*
